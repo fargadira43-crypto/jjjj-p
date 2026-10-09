@@ -90,19 +90,11 @@ class _SavedProjectsScreenState extends State<SavedProjectsScreen> {
       savedProjects.add('$projectName|||');
       await prefs.setStringList('projects_list', savedProjects);
 
-      if (!mounted) return;
-      if (dialogContext.mounted) Navigator.pop(dialogContext);
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              EditorScreen(initialProjectName: projectName),
-        ),
-      );
-      if (mounted) _loadProjects();
+      if (!mounted || !dialogContext.mounted) return;
+      Navigator.pop(dialogContext, projectName);
     }
 
-    await showDialog<void>(
+    final createdProjectName = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
@@ -153,6 +145,19 @@ class _SavedProjectsScreenState extends State<SavedProjectsScreen> {
     );
 
     nameController.dispose();
+
+    // Wait until the create dialog has closed before pushing the editor.
+    // Navigating from inside the dialog's button callback can overlap its
+    // route teardown and trigger Flutter's inherited-dependents assertion.
+    if (createdProjectName == null || !mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            EditorScreen(initialProjectName: createdProjectName),
+      ),
+    );
+    if (mounted) _loadProjects();
   }
 
   // حذف مشروع نهائياً
